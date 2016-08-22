@@ -103,11 +103,12 @@
 #![deny(warnings)]
 #![no_std]
 
+#[cfg(feature = "v3")]
+extern crate md5;
 #[cfg(feature = "v4")]
 extern crate rand;
 #[cfg(feature = "v5")]
 extern crate sha1;
-
 
 use core::fmt;
 use core::hash;
@@ -342,6 +343,17 @@ impl Uuid {
         copy_memory(&mut uuid.bytes, &buffer[..16]);
         uuid.set_variant(UuidVariant::RFC4122);
         uuid.set_version(UuidVersion::Sha1);
+        uuid
+    }
+
+    #[cfg(feature = "v3")]
+    pub fn new_v3(name: &str) -> Uuid {
+        let buffer = md5::compute(name.as_bytes());
+
+        let mut uuid = Uuid { bytes: [0; 16] };
+        copy_memory(&mut uuid.bytes, &buffer[..16]);
+        uuid.set_variant(UuidVariant::RFC4122);
+        uuid.set_version(UuidVersion::Md5);
         uuid
     }
 
@@ -845,6 +857,17 @@ mod tests {
         assert!(Uuid::new(UuidVersion::Dce) == None);
         assert!(Uuid::new(UuidVersion::Md5) == None);
         assert!(Uuid::new(UuidVersion::Sha1) == None);
+    }
+
+    #[test]
+    #[cfg(feature = "v3")]
+    fn test_new_v3() {
+        let uuid1 = Uuid::new_v3("test");
+
+        assert!(uuid1.get_version().unwrap() == UuidVersion::Md5);
+        assert!(uuid1.get_variant().unwrap() == UuidVariant::RFC4122);
+
+        assert_eq!(uuid1.hyphenated().to_string(), "098f6bcd-4621-3373-8ade-4e832627b4f6");
     }
 
     #[test]
